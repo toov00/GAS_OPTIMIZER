@@ -1,0 +1,27 @@
+{
+  "name": "solidity-gas-optimizer",
+  "version": "1.0.0",
+  "description": "Static analysis tool that parses Solidity contracts and suggests gas-saving improvements",
+  "main": "analyzer.js",
+  "bin": {
+    "gas-optimizer": "./analyzer.js"
+  },
+  "scripts": {
+    "analyze": "node analyzer.js",
+    "test": "node analyzer.js examples/Inefficient.sol",
+    "test:json": "node analyzer.js examples/Inefficient.sol --format=json"
+  },
+  "keywords": [
+    "solidity",
+    "ethereum",
+    "gas",
+    "optimization",
+    "smart-contracts",
+    "static-analysis"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
