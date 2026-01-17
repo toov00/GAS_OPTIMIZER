@@ -38,32 +38,6 @@ Gas is the unit measuring computational effort in Ethereum. Every operation (OPC
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Gas Optimization Analyzer                 │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐   │
-│  │   Lexer/     │───▶│     AST      │───▶│   Pattern    │   │
-│  │   Parser     │    │   Builder    │    │   Matcher    │   │
-│  └──────────────┘    └──────────────┘    └──────────────┘   │
-│         │                   │                   │            │
-│         ▼                   ▼                   ▼            │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐   │
-│  │   Tokens     │    │  Syntax Tree │    │   Findings   │   │
-│  └──────────────┘    └──────────────┘    └──────────────┘   │
-│                                                 │            │
-│                                                 ▼            │
-│                                          ┌──────────────┐   │
-│                                          │    Report    │   │
-│                                          │   Generator  │   │
-│                                          └──────────────┘   │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Components
-
 1. **Lexer/Parser**: Tokenizes and parses Solidity source code
 2. **AST Builder**: Constructs Abstract Syntax Tree representation
 3. **Pattern Matcher**: Applies optimization rules against AST
