@@ -3,15 +3,29 @@
  * 
  * Parses tokens into an Abstract Syntax Tree (AST) for analysis.
  * This is a simplified parser focused on constructs relevant to gas optimization.
+ * 
+ * @class Parser
  */
 
 const Lexer = require('./lexer');
 const T = Lexer.TOKEN_TYPES;
 
 class Parser {
+    /**
+     * Create a new Parser instance
+     * @param {Array} tokens - Array of tokens from lexer
+     * @param {string} source - Original source code
+     * @throws {Error} If tokens is not an array or source is not a string
+     */
     constructor(tokens, source) {
+        if (!Array.isArray(tokens)) {
+            throw new Error('Tokens must be an array');
+        }
+        if (typeof source !== 'string') {
+            throw new Error('Source must be a string');
+        }
         this.tokens = tokens.filter(t => 
-            t.type !== T.COMMENT // Keep NATSPEC for docs
+            t && t.type !== T.COMMENT // Keep NATSPEC for docs, filter null tokens
         );
         this.source = source;
         this.pos = 0;
@@ -19,14 +33,23 @@ class Parser {
 
     /**
      * Main parsing entry point
+     * @returns {Object} Abstract Syntax Tree
+     * @throws {Error} If parsing fails critically
      */
     parse() {
+        if (this.tokens.length === 0) {
+            throw new Error('No tokens to parse');
+        }
+
         const ast = {
             type: 'SourceUnit',
             children: [],
             pragmas: [],
             imports: []
         };
+
+        let errorCount = 0;
+        const MAX_ERRORS = 10;
 
         while (!this.isAtEnd()) {
             try {
@@ -41,6 +64,10 @@ class Parser {
                     }
                 }
             } catch (e) {
+                errorCount++;
+                if (errorCount > MAX_ERRORS) {
+                    throw new Error(`Too many parsing errors (${errorCount}). Last error: ${e.message}`);
+                }
                 // Skip to next statement on error
                 this.synchronize();
             }
@@ -1714,30 +1741,61 @@ class Parser {
 
     // Helper methods
 
+    /**
+     * Peek at current token without advancing
+     * @returns {Object} Current token
+     */
     peek() {
-        return this.tokens[this.pos];
-    }
-
-    advance() {
-        if (!this.isAtEnd()) {
-            return this.tokens[this.pos++];
+        if (this.pos >= this.tokens.length) {
+            return { type: T.EOF, value: '', line: 0, column: 0 };
         }
         return this.tokens[this.pos];
     }
 
-    isAtEnd() {
-        return this.pos >= this.tokens.length || this.peek().type === T.EOF;
+    /**
+     * Advance to next token
+     * @returns {Object} Current token before advancing
+     */
+    advance() {
+        if (!this.isAtEnd()) {
+            return this.tokens[this.pos++];
+        }
+        return this.peek();
     }
 
+    /**
+     * Check if at end of tokens
+     * @returns {boolean} True if at end
+     */
+    isAtEnd() {
+        return this.pos >= this.tokens.length || (this.peek() && this.peek().type === T.EOF);
+    }
+
+    /**
+     * Check if current token matches type
+     * @param {string} type - Token type to check
+     * @returns {boolean} True if matches
+     */
     check(type) {
         if (this.isAtEnd()) return false;
-        return this.peek().type === type;
+        const token = this.peek();
+        return token && token.type === type;
     }
 
+    /**
+     * Check if current token is a keyword with specific value
+     * @param {string} keyword - Keyword value to check
+     * @returns {boolean} True if matches
+     */
     checkKeyword(keyword) {
         return this.check(T.KEYWORD) && this.peek().value === keyword;
     }
 
+    /**
+     * Match and consume token if it matches type
+     * @param {string} type - Token type to match
+     * @returns {boolean} True if matched and consumed
+     */
     match(type) {
         if (this.check(type)) {
             this.advance();
@@ -1746,15 +1804,24 @@ class Parser {
         return false;
     }
 
+    /**
+     * Expect a token of specific type (and optionally value)
+     * @param {string} type - Expected token type
+     * @param {string|null} value - Optional expected token value
+     * @returns {Object} The matched token
+     * @throws {Error} If token doesn't match
+     */
     expect(type, value = null) {
         if (this.check(type)) {
-            if (value === null || this.peek().value === value) {
+            const token = this.peek();
+            if (value === null || token.value === value) {
                 return this.advance();
             }
         }
         const token = this.peek();
+        const tokenInfo = token ? `${token.type} '${token.value}'` : 'EOF';
         throw new Error(
-            `Expected ${type}${value ? ` '${value}'` : ''} at line ${token.line}, column ${token.column}, got ${token.type} '${token.value}'`
+            `Expected ${type}${value ? ` '${value}'` : ''} at line ${token?.line || 0}, column ${token?.column || 0}, got ${tokenInfo}`
         );
     }
 

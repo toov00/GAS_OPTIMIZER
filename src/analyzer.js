@@ -3,10 +3,46 @@
  * 
  * Analyzes the AST for gas optimization opportunities.
  * Contains pattern matchers for common gas-wasting patterns.
+ * 
+ * @class Analyzer
  */
 
+// Constants for gas costs (approximate)
+const GAS_COSTS = {
+    SLOAD_COLD: 2100,
+    SLOAD_WARM: 100,
+    SSTORE_NEW: 20000,
+    SSTORE_UPDATE: 5000,
+    MLOAD: 3,
+    MSTORE: 3,
+    ADD: 3,
+    SUB: 3,
+    MUL: 5,
+    DIV: 5,
+    CALL: 2600
+};
+
+// Severity thresholds
+const SEVERITY_THRESHOLDS = {
+    HIGH: 1000,
+    MEDIUM: 100,
+    LOW: 0
+};
+
 class Analyzer {
+    /**
+     * Create a new Analyzer instance
+     * @param {Object} ast - Abstract Syntax Tree
+     * @param {string} source - Original source code
+     * @throws {Error} If ast or source is invalid
+     */
     constructor(ast, source) {
+        if (!ast || typeof ast !== 'object') {
+            throw new Error('AST must be a valid object');
+        }
+        if (typeof source !== 'string') {
+            throw new Error('Source must be a string');
+        }
         this.ast = ast;
         this.source = source;
         this.sourceLines = source.split('\n');
@@ -21,18 +57,24 @@ class Analyzer {
 
     /**
      * Main analysis entry point
+     * @returns {Array} Array of findings
+     * @throws {Error} If analysis fails
      */
     analyze() {
-        // First pass: collect state variables
-        this.collectStateVariables(this.ast);
+        try {
+            // First pass: collect state variables
+            this.collectStateVariables(this.ast);
 
-        // Second pass: run all analyzers
-        this.analyzeNode(this.ast);
+            // Second pass: run all analyzers
+            this.analyzeNode(this.ast);
 
-        // Post-analysis checks
-        this.checkStoragePacking();
+            // Post-analysis checks
+            this.checkStoragePacking();
 
-        return this.findings;
+            return this.findings;
+        } catch (error) {
+            throw new Error(`Analysis failed: ${error.message}`);
+        }
     }
 
     /**
@@ -225,8 +267,8 @@ class Analyzer {
                             line: forNode.line,
                             column: forNode.column,
                             message: `Cache '${obj.name}.length' outside the loop`,
-                            description: 'Reading storage array length on each iteration costs ~2100 gas (cold) or ~100 gas (warm) per SLOAD.',
-                            gasSavings: '~100-2100 gas per iteration',
+                            description: `Reading storage array length on each iteration costs ~${GAS_COSTS.SLOAD_COLD} gas (cold) or ~${GAS_COSTS.SLOAD_WARM} gas (warm) per SLOAD.`,
+                            gasSavings: `~${GAS_COSTS.SLOAD_WARM}-${GAS_COSTS.SLOAD_COLD} gas per iteration`,
                             before: `for (uint i = 0; i < ${obj.name}.length; i++)`,
                             after: `uint256 len = ${obj.name}.length;\nfor (uint i = 0; i < len; i++)`
                         });
@@ -302,8 +344,8 @@ class Analyzer {
                     line: node.line,
                     column: node.column,
                     message: `Consider making '${node.name}' constant or immutable`,
-                    description: 'Constants and immutables are embedded in bytecode, avoiding SLOAD operations (~2100 gas).',
-                    gasSavings: '~2100 gas per read',
+                    description: `Constants and immutables are embedded in bytecode, avoiding SLOAD operations (~${GAS_COSTS.SLOAD_COLD} gas).`,
+                    gasSavings: `~${GAS_COSTS.SLOAD_COLD} gas per read`,
                     before: `${this.getTypeName(node.typeName)} ${node.name} = ...`,
                     after: `${this.getTypeName(node.typeName)} constant ${node.name} = ...`
                 });
@@ -321,7 +363,7 @@ class Analyzer {
                     column: node.column,
                     message: `Consider making '${node.name}' immutable if set only in constructor`,
                     description: 'Immutable variables are stored in bytecode after construction, saving SLOAD gas.',
-                    gasSavings: '~2100 gas per read'
+                    gasSavings: `~${GAS_COSTS.SLOAD_COLD} gas per read`
                 });
             }
         }
@@ -529,7 +571,7 @@ class Analyzer {
                     line: vars[0].line,
                     message: `Contract '${contractName}' can optimize storage layout`,
                     description: `Reordering state variables could reduce storage slots from ${currentSlot + 1} to ${optimalSlots + 1}.`,
-                    gasSavings: `~${(currentSlot - optimalSlots) * 20000} gas on deployment + runtime savings`,
+                    gasSavings: `~${(currentSlot - optimalSlots) * GAS_COSTS.SSTORE_NEW} gas on deployment + runtime savings`,
                     suggestion: 'Group smaller variables together to pack into single 32-byte slots.'
                 });
             }
@@ -550,8 +592,8 @@ class Analyzer {
                 line: node.line,
                 column: node.column,
                 message: `Cache storage variable(s) before loop: ${storageReads.join(', ')}`,
-                description: 'Storage reads in loop conditions are executed every iteration, costing ~100-2100 gas each.',
-                gasSavings: '~100-2100 gas per iteration per variable'
+                description: `Storage reads in loop conditions are executed every iteration, costing ~${GAS_COSTS.SLOAD_WARM}-${GAS_COSTS.SLOAD_COLD} gas each.`,
+                gasSavings: `~${GAS_COSTS.SLOAD_WARM}-${GAS_COSTS.SLOAD_COLD} gas per iteration per variable`
             });
         }
     }
@@ -560,7 +602,25 @@ class Analyzer {
     // HELPER METHODS
     // ========================================
 
+    /**
+     * Add a finding to the results
+     * @param {Object} finding - Finding object
+     * @throws {Error} If finding is invalid
+     */
     addFinding(finding) {
+        if (!finding || typeof finding !== 'object') {
+            throw new Error('Finding must be a valid object');
+        }
+        if (!finding.rule || !finding.severity || !finding.message) {
+            throw new Error('Finding must have rule, severity, and message');
+        }
+
+        // Validate severity
+        const validSeverities = ['high', 'medium', 'low', 'info'];
+        if (!validSeverities.includes(finding.severity)) {
+            throw new Error(`Invalid severity: ${finding.severity}`);
+        }
+
         this.findings.push({
             ...finding,
             contract: this.currentContract,
@@ -568,7 +628,15 @@ class Analyzer {
         });
     }
 
+    /**
+     * Get source line by line number
+     * @param {number} lineNum - Line number (1-indexed)
+     * @returns {string} Source line or empty string
+     */
     getSourceLine(lineNum) {
+        if (!Number.isInteger(lineNum) || lineNum < 1) {
+            return '';
+        }
         return this.sourceLines[lineNum - 1] || '';
     }
 

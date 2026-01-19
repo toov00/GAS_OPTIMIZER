@@ -2,14 +2,44 @@
  * Gas Optimization Report Generator
  * 
  * Generates human-readable or JSON reports from analysis findings.
+ * 
+ * @class Reporter
  */
 
+// Constants
+const DEFAULT_FILENAME = 'Contract.sol';
+const DEFAULT_SEVERITY = 'low';
+const DEFAULT_FORMAT = 'text';
+const REPORT_WIDTH = 70;
+const VALID_SEVERITIES = ['high', 'medium', 'low', 'info'];
+const VALID_FORMATS = ['text', 'json'];
+
 class Reporter {
+    /**
+     * Create a new Reporter instance
+     * @param {Array} findings - Array of analysis findings
+     * @param {Object} options - Reporter options
+     * @param {string} options.filename - Contract filename
+     * @param {string} options.minSeverity - Minimum severity to include
+     * @param {string} options.format - Output format ('text' or 'json')
+     * @throws {Error} If findings is not an array or options are invalid
+     */
     constructor(findings, options = {}) {
+        if (!Array.isArray(findings)) {
+            throw new Error('Findings must be an array');
+        }
         this.findings = findings;
-        this.filename = options.filename || 'Contract.sol';
-        this.minSeverity = options.minSeverity || 'low';
-        this.format = options.format || 'text';
+        this.filename = options.filename || DEFAULT_FILENAME;
+        this.minSeverity = options.minSeverity || DEFAULT_SEVERITY;
+        this.format = options.format || DEFAULT_FORMAT;
+        
+        // Validate options
+        if (!VALID_SEVERITIES.includes(this.minSeverity)) {
+            throw new Error(`Invalid minSeverity: ${this.minSeverity}. Valid values: ${VALID_SEVERITIES.join(', ')}`);
+        }
+        if (!VALID_FORMATS.includes(this.format)) {
+            throw new Error(`Invalid format: ${this.format}. Valid values: ${VALID_FORMATS.join(', ')}`);
+        }
         
         // Severity ordering
         this.severityOrder = { 'high': 3, 'medium': 2, 'low': 1, 'info': 0 };
@@ -17,18 +47,24 @@ class Reporter {
 
     /**
      * Generate the report
+     * @returns {string} Generated report
+     * @throws {Error} If report generation fails
      */
     generate() {
-        // Filter by minimum severity
-        const filtered = this.filterBySeverity(this.findings);
-        
-        // Sort by severity (high first)
-        const sorted = this.sortBySeverity(filtered);
+        try {
+            // Filter by minimum severity
+            const filtered = this.filterBySeverity(this.findings);
+            
+            // Sort by severity (high first)
+            const sorted = this.sortBySeverity(filtered);
 
-        if (this.format === 'json') {
-            return this.generateJSON(sorted);
+            if (this.format === 'json') {
+                return this.generateJSON(sorted);
+            }
+            return this.generateText(sorted);
+        } catch (error) {
+            throw new Error(`Report generation failed: ${error.message}`);
         }
-        return this.generateText(sorted);
     }
 
     /**
@@ -71,10 +107,12 @@ class Reporter {
 
     /**
      * Generate text report
+     * @param {Array} findings - Filtered and sorted findings
+     * @returns {string} Text report
      */
     generateText(findings) {
         const lines = [];
-        const width = 70;
+        const width = REPORT_WIDTH;
 
         // Header
         lines.push('');
@@ -186,11 +224,13 @@ class Reporter {
 
     /**
      * Generate summary statistics
+     * @param {Array} findings - Array of findings
+     * @returns {Object} Summary statistics
      */
     generateSummary(findings) {
         const summary = { high: 0, medium: 0, low: 0, info: 0, total: findings.length };
         for (const f of findings) {
-            if (summary.hasOwnProperty(f.severity)) {
+            if (f && f.severity && summary.hasOwnProperty(f.severity)) {
                 summary[f.severity]++;
             }
         }
@@ -227,9 +267,15 @@ class Reporter {
     }
 
     /**
-     * Center text
+     * Center text within width
+     * @param {string} text - Text to center
+     * @param {number} width - Total width
+     * @returns {string} Centered text
      */
     center(text, width) {
+        if (typeof text !== 'string') {
+            text = String(text);
+        }
         const padding = Math.max(0, Math.floor((width - text.length) / 2));
         return ' '.repeat(padding) + text;
     }

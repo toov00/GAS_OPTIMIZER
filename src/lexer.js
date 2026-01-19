@@ -3,10 +3,19 @@
  * 
  * Tokenizes Solidity source code into a stream of tokens
  * for parsing and analysis.
+ * 
+ * @class Lexer
  */
-
 class Lexer {
+    /**
+     * Create a new Lexer instance
+     * @param {string} source - Source code to tokenize
+     * @throws {Error} If source is not a string
+     */
     constructor(source) {
+        if (typeof source !== 'string') {
+            throw new Error('Source must be a string');
+        }
         this.source = source;
         this.pos = 0;
         this.line = 1;
@@ -96,20 +105,32 @@ class Lexer {
 
     /**
      * Main tokenization method
+     * @returns {Array} Array of tokens
+     * @throws {Error} If tokenization fails
      */
     tokenize() {
-        while (!this.isAtEnd()) {
-            this.skipWhitespace();
-            if (this.isAtEnd()) break;
+        try {
+            while (!this.isAtEnd()) {
+                this.skipWhitespace();
+                if (this.isAtEnd()) break;
 
-            const token = this.nextToken();
-            if (token) {
-                this.tokens.push(token);
+                const token = this.nextToken();
+                if (token) {
+                    this.tokens.push(token);
+                } else {
+                    // Unknown character - skip with warning
+                    const char = this.peek();
+                    if (char !== '\0') {
+                        this.advance(); // Skip unknown character
+                    }
+                }
             }
-        }
 
-        this.tokens.push(this.makeToken(Lexer.TOKEN_TYPES.EOF, ''));
-        return this.tokens;
+            this.tokens.push(this.makeToken(Lexer.TOKEN_TYPES.EOF, ''));
+            return this.tokens;
+        } catch (error) {
+            throw new Error(`Tokenization error at line ${this.line}, column ${this.column}: ${error.message}`);
+        }
     }
 
     /**
@@ -429,21 +450,46 @@ class Lexer {
         return null;
     }
 
-    // Helper methods
+    // ========================================
+    // HELPER METHODS
+    // ========================================
 
+    /**
+     * Create a token object
+     * @param {string} type - Token type
+     * @param {string} value - Token value
+     * @param {number} line - Line number
+     * @param {number} column - Column number
+     * @returns {Object} Token object
+     */
     makeToken(type, value, line = this.line, column = this.column) {
         return { type, value, line, column };
     }
 
+    /**
+     * Peek at current character without advancing
+     * @returns {string} Current character or null terminator
+     */
     peek() {
         return this.isAtEnd() ? '\0' : this.source[this.pos];
     }
 
+    /**
+     * Peek at next character without advancing
+     * @returns {string} Next character or null terminator
+     */
     peekNext() {
         return this.pos + 1 >= this.source.length ? '\0' : this.source[this.pos + 1];
     }
 
+    /**
+     * Advance to next character
+     * @returns {string} Current character
+     */
     advance() {
+        if (this.isAtEnd()) {
+            return '\0';
+        }
         const char = this.source[this.pos++];
         if (char === '\n') {
             this.line++;
@@ -454,22 +500,46 @@ class Lexer {
         return char;
     }
 
+    /**
+     * Check if at end of source
+     * @returns {boolean} True if at end
+     */
     isAtEnd() {
         return this.pos >= this.source.length;
     }
 
+    /**
+     * Check if character is a digit
+     * @param {string} char - Character to check
+     * @returns {boolean} True if digit
+     */
     isDigit(char) {
         return char >= '0' && char <= '9';
     }
 
+    /**
+     * Check if character is a hex digit
+     * @param {string} char - Character to check
+     * @returns {boolean} True if hex digit
+     */
     isHexDigit(char) {
         return this.isDigit(char) || (char >= 'a' && char <= 'f') || (char >= 'A' && char <= 'F');
     }
 
+    /**
+     * Check if character is alphabetic
+     * @param {string} char - Character to check
+     * @returns {boolean} True if alphabetic
+     */
     isAlpha(char) {
         return (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z');
     }
 
+    /**
+     * Check if character is alphanumeric
+     * @param {string} char - Character to check
+     * @returns {boolean} True if alphanumeric
+     */
     isAlphaNumeric(char) {
         return this.isAlpha(char) || this.isDigit(char);
     }
