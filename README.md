@@ -2,12 +2,34 @@
 
 A static analysis tool that parses Solidity smart contracts and identifies gas optimization opportunities. The analyzer examines your contract's Abstract Syntax Tree (AST) to detect common patterns that waste gas and provides actionable recommendations with estimated savings.
 
-## Quick Start
+## What It Does
+
+Analyzes Solidity contracts for gas inefficiencies across 6 optimization categories. Automatically detects wasteful patterns and generates detailed reports with severity classification and estimated gas savings.
+
+**Features:**
+- Detects 20+ gas optimization patterns (storage caching, variable packing, loop optimizations, etc.)
+- Automatic pattern detection via AST traversal
+- Detailed text and JSON reports with severity classification
+- Works with any Solidity contract (no dependencies required)
+- Estimates gas savings for each finding
+
+## Installation
+
+**Requirements:** Node.js 14.0.0+
 
 ```bash
-# Install dependencies (if any)
+git clone <your-repo>
+cd GAS_OPTIMIZER
 npm install
+```
 
+No external dependencies required. The tool uses pure JavaScript with Node.js built-in modules.
+
+## Usage
+
+### Quick Start
+
+```bash
 # Analyze a contract
 node analyzer.js path/to/Contract.sol
 
@@ -21,17 +43,49 @@ node analyzer.js Contract.sol --format=json --output=report.json
 node analyzer.js Contract.sol --verbose
 ```
 
-## How It Works
+### Command Line Options
 
-The analyzer uses a four-stage pipeline:
+```
+node analyzer.js <contract.sol> [options]
 
-1. **Lexical Analysis**: Tokenizes Solidity source code into a stream of tokens, handling comments, strings, numbers, and operators.
+Options:
+  --format=<text|json>     Output format (default: text)
+  --min-severity=<level>   Minimum severity: low, medium, high (default: low)
+  --output=<file>          Write report to file instead of stdout
+  --verbose                Show detailed analysis steps
+  --help, -h               Show help message
+```
 
-2. **Parsing**: Builds an Abstract Syntax Tree (AST) from the token stream, preserving the structure of contracts, functions, statements, and expressions.
+### Custom Analysis
 
-3. **Pattern Matching**: Traverses the AST applying optimization rules. The analyzer tracks context (current contract, function, variable scope) to make accurate recommendations.
+1. Filter by severity level:
 
-4. **Report Generation**: Formats findings into human-readable text or structured JSON, including severity levels, gas savings estimates, and code examples.
+```bash
+# Only show high-severity findings
+node analyzer.js Contract.sol --min-severity=high
+
+# Show medium and high severity
+node analyzer.js Contract.sol --min-severity=medium
+```
+
+2. Generate structured output:
+
+```bash
+# JSON format for CI/CD integration
+node analyzer.js Contract.sol --format=json > report.json
+
+# Save text report to file
+node analyzer.js Contract.sol --output=gas_report.txt
+```
+
+## Optimization Categories
+
+1. **Storage Optimizations**: Caching variables, packing storage slots, using immutable/constant
+2. **Function Parameter Optimizations**: Preferring calldata over memory, external over public
+3. **Loop Optimizations**: Caching array lengths, unchecked increments, prefix operators
+4. **Error Handling Optimizations**: Custom errors instead of revert strings
+5. **Arithmetic Optimizations**: Bit shifts for powers of two, short-circuit evaluation
+6. **Comparison Optimizations**: Using != 0 instead of > 0 for unsigned integers
 
 ## Gas Cost Reference
 
@@ -256,35 +310,21 @@ require(amount != 0);
 
 Savings: Approximately 6 gas.
 
-## Command Line Options
+## Examples
 
+See `examples/` directory for sample contracts:
+
+- `Inefficient.sol`: Contract demonstrating common gas inefficiencies
+- Compare with optimized patterns to see the differences
+
+```bash
+# Analyze the example contract
+node analyzer.js examples/Inefficient.sol
 ```
-node analyzer.js <contract.sol> [options]
 
-Options:
-  --format=<text|json>     Output format (default: text)
-  --min-severity=<level>   Minimum severity: low, medium, high (default: low)
-  --output=<file>          Write report to file instead of stdout
-  --verbose                Show detailed analysis steps
-  --help, -h               Show help message
-```
+## Reports
 
-## Understanding Severity Levels
-
-Findings are categorized by severity based on estimated gas savings:
-
-| Level | Description | Typical Savings |
-|-------|-------------|-----------------|
-| HIGH | Critical optimizations with significant impact | >1000 gas |
-| MEDIUM | Substantial improvements | 100-1000 gas |
-| LOW | Minor optimizations | <100 gas |
-| INFO | Best practices and suggestions | Varies |
-
-The analyzer estimates savings based on gas cost tables and operation frequency. Actual savings depend on execution frequency and contract state.
-
-## Report Format
-
-Text reports include:
+Reports are generated in text or JSON format. Text reports include:
 
 - Summary statistics by severity level
 - Estimated total gas savings (deployment and per-transaction)
@@ -297,17 +337,40 @@ Text reports include:
 
 JSON reports provide structured data suitable for CI/CD integration or further processing.
 
-## Examples
+### Understanding Severity Levels
 
-The `examples/` directory contains sample contracts demonstrating common inefficiencies:
+Findings are categorized by severity based on estimated gas savings:
 
-```bash
-# Analyze the example contract
-node analyzer.js examples/Inefficient.sol
+| Level | Description | Typical Savings |
+|-------|-------------|-----------------|
+| HIGH | Critical optimizations with significant impact | >1000 gas |
+| MEDIUM | Substantial improvements | 100-1000 gas |
+| LOW | Minor optimizations | <100 gas |
+| INFO | Best practices and suggestions | Varies |
 
-# Compare with optimized version
-node analyzer.js examples/Optimized.sol
-```
+The analyzer estimates savings based on gas cost tables and operation frequency. Actual savings depend on execution frequency and contract state.
+
+## Troubleshooting
+
+**Analysis taking too long?** Large contracts may take longer to parse. Use `--min-severity=high` to filter results and speed up processing.
+
+**False positives?** Some patterns may be intentional for your use case. Review findings carefully before applying fixes.
+
+**Import errors?** Make sure you're running from project root and the contract file path is correct.
+
+**No findings?** Try lowering the severity filter with `--min-severity=low` or check that your contract has the patterns the analyzer detects.
+
+## How It Works
+
+The analyzer uses a four-stage pipeline:
+
+1. **Lexical Analysis**: Tokenizes Solidity source code into a stream of tokens, handling comments, strings, numbers, and operators.
+
+2. **Parsing**: Builds an Abstract Syntax Tree (AST) from the token stream, preserving the structure of contracts, functions, statements, and expressions.
+
+3. **Pattern Matching**: Traverses the AST applying optimization rules. The analyzer tracks context (current contract, function, variable scope) to make accurate recommendations.
+
+4. **Report Generation**: Formats findings into human-readable text or structured JSON, including severity levels, gas savings estimates, and code examples.
 
 ## Limitations
 
@@ -321,11 +384,21 @@ This analyzer focuses on common gas optimization patterns. It does not:
 
 For complex optimizations, manual review and gas profiling tools are recommended.
 
-## Requirements
+## Contributing
 
-- Node.js >= 14.0.0
-- No external dependencies (pure JavaScript implementation)
+Contributions welcome! To add new optimization patterns:
+
+1. Add pattern detection logic to `src/analyzer.js`
+2. Choose appropriate severity level based on gas savings
+3. Test against multiple contract examples
+4. Update documentation with the new pattern
 
 ## License
 
-MIT
+MIT License
+
+## Resources
+
+- [Ethereum Gas Costs](https://ethereum.org/en/developers/docs/gas/)
+- [Solidity Gas Optimization Tips](https://docs.soliditylang.org/en/latest/gas-optimization.html)
+- [EVM Opcodes](https://ethereum.org/en/developers/docs/evm/opcodes/)
