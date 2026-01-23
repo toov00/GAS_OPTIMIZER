@@ -108,7 +108,7 @@ Storage operations dominate gas costs. A single unnecessary SLOAD in a loop can 
 
 These typically offer the highest impact because storage operations are expensive.
 
-#### Cache Storage Variables in Loops
+1. Cache Storage Variables in Loops
 
 Reading from storage in a loop condition executes on every iteration. Cache the value before the loop.
 
@@ -132,7 +132,7 @@ function processItems() external {
 
 Savings: Approximately 2000 gas per avoided SLOAD in the loop condition.
 
-#### Storage Variable Packing
+2. Storage Variable Packing
 
 EVM storage slots are 32 bytes. Variables smaller than 32 bytes can share a slot if they fit together.
 
@@ -154,7 +154,7 @@ contract Good {
 
 Savings: Approximately 20,000 gas per eliminated slot on deployment, plus runtime savings.
 
-#### Use immutable and constant
+3. Use immutable and constant
 
 Values that never change should use `immutable` (set in constructor) or `constant` (compile-time constant). These are embedded in bytecode, eliminating SLOAD operations.
 
@@ -171,7 +171,7 @@ Savings: Approximately 2100 gas per read avoided.
 
 ### Function Parameter Optimizations
 
-#### Prefer calldata over memory
+1. Prefer calldata over memory
 
 For external functions with array or struct parameters that aren't modified, use `calldata` instead of `memory`. This avoids copying data to memory.
 
@@ -189,7 +189,7 @@ function process(uint256[] calldata data) external {
 
 Savings: Approximately 60 gas per word plus memory expansion costs.
 
-#### Use external instead of public
+2. Use external instead of public
 
 For functions that aren't called internally, `external` is more gas efficient than `public` because it can read directly from calldata.
 
@@ -203,7 +203,7 @@ function process(uint256[] calldata data) external { }
 
 ### Loop Optimizations
 
-#### Cache array length
+1. Cache array length
 
 Reading `array.length` from storage in a loop condition is expensive. Cache it first.
 
@@ -216,7 +216,7 @@ uint256 len = array.length;
 for (uint i = 0; i < len; i++) { }
 ```
 
-#### Use unchecked for safe increments
+2. Use unchecked for safe increments
 
 When loop bounds are known and overflow is impossible, use `unchecked` blocks to skip overflow checks.
 
@@ -233,7 +233,7 @@ for (uint i = 0; i < len; ) {
 
 Savings: Approximately 60-80 gas per iteration.
 
-#### Prefer prefix increment
+3. Prefer prefix increment
 
 Use `++i` instead of `i++` to avoid creating a temporary variable.
 
@@ -249,7 +249,7 @@ Savings: Approximately 5 gas per operation.
 
 ### Error Handling Optimizations
 
-#### Custom errors over revert strings
+1. Custom errors over revert strings
 
 Custom errors (introduced in Solidity 0.8.4) are more gas efficient than revert strings. They use only 4 bytes for the error selector instead of storing the entire string in bytecode.
 
@@ -266,7 +266,7 @@ Savings: Approximately 50 gas on deployment plus runtime savings per revert.
 
 ### Arithmetic Optimizations
 
-#### Bit shifts for powers of two
+1. Bit shifts for powers of two
 
 Multiplication and division by powers of two can use bit shifts, which are cheaper.
 
@@ -282,7 +282,7 @@ uint256 z = y >> 2;  // Divide by 4
 
 Savings: Approximately 5 gas per operation.
 
-#### Short-circuit evaluation
+2. Short-circuit evaluation
 
 Order conditions to place cheaper checks first. If the first condition fails in an AND chain, the second won't be evaluated.
 
@@ -296,7 +296,7 @@ if (cheapLocalCheck && expensiveStorageRead()) { }
 
 ### Comparison Optimizations
 
-#### Use != 0 instead of > 0 for unsigned integers
+1. Use != 0 instead of > 0 for unsigned integers
 
 For unsigned integers, checking `!= 0` is slightly cheaper than `> 0` because it uses the ISZERO opcode.
 
