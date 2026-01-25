@@ -12,7 +12,7 @@ Analyzes Solidity contracts for gas inefficiencies across 6 optimization categor
 - Detailed text and JSON reports with severity classification
 - Works with any Solidity contract (no dependencies required)
 - Estimates gas savings for each finding
-- VS Code extension available for real-time analysis
+- VS Code extension available (see `vscode-extension/` folder for installation and usage)
 
 ## Installation
 
@@ -25,29 +25,6 @@ npm install
 ```
 
 No external dependencies required. The tool uses pure JavaScript with Node.js built-in modules.
-
-## VS Code Extension
-
-A VS Code extension is available for real-time analysis directly in your editor. The extension automatically analyzes Solidity files on open and save, displaying findings in the Problems panel with severity levels and gas savings estimates.
-
-**Installation:**
-
-```bash
-cd vscode-extension
-npm install
-npm run compile
-npm run package
-code --install-extension solidity-gas-optimizer-1.0.0.vsix
-```
-
-**Features:**
-- Real-time analysis on file open and save
-- Visual diagnostics in Problems panel
-- Workspace-wide scanning
-- Configurable severity thresholds
-- Gas savings estimates for each finding
-
-See `vscode-extension/README.md` for detailed extension documentation.
 
 ## Usage
 
