@@ -1,0 +1,93 @@
+{
+  "name": "solidity-gas-optimizer",
+  "displayName": "Solidity Gas Optimizer",
+  "description": "Checks Solidity code for gas optimization opportunities and shows results in the Problems panel.",
+  "version": "1.0.0",
+  "publisher": "gas-optimizer",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Linters"
+  ],
+  "keywords": [
+    "solidity",
+    "gas",
+    "optimization",
+    "linter"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "gas-optimizer.scan",
+        "title": "Check for Gas Optimizations"
+      },
+      {
+        "command": "gas-optimizer.scanWorkspace",
+        "title": "Check Workspace for Gas Optimizations"
+      }
+    ],
+    "configuration": {
+      "title": "Gas Optimizer",
+      "properties": {
+        "gas-optimizer.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the gas optimizer"
+        },
+        "gas-optimizer.runOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Check files automatically on save"
+        },
+        "gas-optimizer.minSeverity": {
+          "type": "string",
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ],
+          "default": "low",
+          "description": "Minimum severity to show"
+        },
+        "gas-optimizer.nodePath": {
+          "type": "string",
+          "default": "node",
+          "description": "Node.js interpreter path"
+        },
+        "gas-optimizer.analyzerPath": {
+          "type": "string",
+          "default": "",
+          "description": "Custom analyzer script path (optional)"
+        }
+      }
+    },
+    "languages": [
+      {
+        "id": "solidity",
+        "aliases": [
+          "Solidity",
+          "sol"
+        ],
+        "extensions": [
+          ".sol"
+        ]
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.75.0",
+    "typescript": "^4.9.0"
+  },
+  "dependencies": {}
+}
